@@ -367,6 +367,47 @@
 (function(){
   "use strict";
 
+  // ---------- temporary debug panel (remove once the share flow is confirmed working) ----------
+  var dbg = document.createElement("div");
+  dbg.setAttribute("dir", "ltr");
+  dbg.style.cssText = "position:fixed;bottom:0;inset-inline:0;z-index:9999;background:#0a0a0a;color:#7dffb0;" +
+    "font:11px/1.5 monospace;padding:8px 10px;text-align:left;white-space:pre-wrap;max-height:40vh;" +
+    "overflow:auto;opacity:.92;direction:ltr;";
+  dbg.textContent = "debug: loading...";
+  dbg.addEventListener("click", function(){ dbg.remove(); });
+  document.addEventListener("DOMContentLoaded", function(){ document.body.appendChild(dbg); });
+  if (document.body) document.body.appendChild(dbg);
+
+  function dbgLog(){
+    var parts = ["href: " + location.href, "(tap this box to hide it)"];
+    if ("serviceWorker" in navigator){
+      var ctrl = navigator.serviceWorker.controller;
+      parts.push("SW controller: " + (ctrl ? ctrl.scriptURL + " [" + ctrl.state + "]" : "none"));
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        var extra = [];
+        if (reg){
+          extra.push("registration scope: " + reg.scope);
+          if (reg.active) extra.push("active: " + reg.active.scriptURL);
+          if (reg.waiting) extra.push("waiting: " + reg.waiting.scriptURL);
+          if (reg.installing) extra.push("installing: " + reg.installing.scriptURL);
+        } else {
+          extra.push("no registration found");
+        }
+        dbg.textContent = parts.concat(extra).join("\n");
+      }).catch(function(err){
+        dbg.textContent = parts.concat(["getRegistration error: " + err]).join("\n");
+      });
+    } else {
+      parts.push("serviceWorker API not available");
+      dbg.textContent = parts.join("\n");
+    }
+    dbg.textContent = parts.join("\n");
+  }
+  dbgLog();
+  window.dbgAppend = function(line){
+    dbg.textContent += "\n" + line;
+  };
+
   var HEBREW_RANGE = /[֐-׿]/;
 
   function shapeRtlLine(line){
@@ -785,10 +826,14 @@
   // Desktop/ChromeOS: the manifest's file_handlers lets the OS "Open with"
   // menu launch the installed app straight onto a .pdf file.
   if ("launchQueue" in window){
+    dbgAppend("launchQueue available");
     window.launchQueue.setConsumer(function(launchParams){
+      dbgAppend("launchQueue fired, files: " + (launchParams.files ? launchParams.files.length : 0));
       if (!launchParams.files || !launchParams.files.length) return;
       launchParams.files[0].getFile().then(handleFile);
     });
+  } else {
+    dbgAppend("launchQueue not available");
   }
 
   // Android: the manifest's share_target makes the app appear in the
@@ -819,20 +864,26 @@
     });
   }
 
+  dbgAppend("search: " + (location.search || "(empty — share_target navigation likely never reached this page with ?shared=1)"));
+
   if (location.search.indexOf("shared=1") !== -1){
+    dbgAppend("shared=1 detected, checking IndexedDB...");
     if ("indexedDB" in window){
       takeSharedFile().then(function(rec){
+        dbgAppend("takeSharedFile resolved: " + (rec ? ("found, filename=" + rec.filename + ", size=" + (rec.blob && rec.blob.size)) : "no record found"));
         if (rec && rec.blob){
           handleFile(new File([rec.blob], rec.filename || "shared.pdf", { type: rec.type || "application/pdf" }));
         } else {
           setStatus("לא התקבל קובץ מהשיתוף. פתחו את האפליקציה ישירות פעם אחת ואז נסו לשתף שוב.");
         }
-      }).catch(function(){
+      }).catch(function(err){
+        dbgAppend("takeSharedFile error: " + err);
         setStatus("אירעה שגיאה בקבלת הקובץ מהשיתוף. נסו לשתף שוב.");
       }).finally(function(){
         history.replaceState(null, "", location.pathname);
       });
     } else {
+      dbgAppend("indexedDB not available in this context");
       history.replaceState(null, "", location.pathname);
     }
   }
