@@ -1,0 +1,796 @@
+<title>אישור הזמנה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+
+<style>
+  :root{
+    --paper:#f5f1e9;
+    --surface:#ffffff;
+    --surface-2:#efe9dc;
+    --ink:#22201b;
+    --muted:#7a7062;
+    --border:#ddd4c1;
+    --accent:#1a4a52;
+    --accent-ink:#ffffff;
+    --accent-soft:#e3ede9;
+    --stamp:#9c3b2e;
+    --stamp-soft:#f4e3df;
+    --success:#2f7a4f;
+    --success-soft:#e3efe4;
+    --shadow: 0 1px 2px rgba(34,32,27,.06), 0 8px 24px -12px rgba(34,32,27,.18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#171512;
+      --surface:#211f1a;
+      --surface-2:#2a2721;
+      --ink:#efe9dd;
+      --muted:#a89e8c;
+      --border:#3a3630;
+      --accent:#5ba7a8;
+      --accent-ink:#0f1a19;
+      --accent-soft:#213230;
+      --stamp:#e08a76;
+      --stamp-soft:#332420;
+      --success:#7fcf9a;
+      --success-soft:#1c3226;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#171512;
+    --surface:#211f1a;
+    --surface-2:#2a2721;
+    --ink:#efe9dd;
+    --muted:#a89e8c;
+    --border:#3a3630;
+    --accent:#5ba7a8;
+    --accent-ink:#0f1a19;
+    --accent-soft:#213230;
+    --stamp:#e08a76;
+    --stamp-soft:#332420;
+    --success:#7fcf9a;
+    --success-soft:#1c3226;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans Hebrew", "Segoe UI", Arial, sans-serif;
+    direction:rtl;
+    padding-inline:16px;
+    padding-bottom:calc(140px + env(safe-area-inset-bottom,0px));
+  }
+  h1,h2,h3{font-family:"Frank Ruhl Libre", "Times New Roman", serif; margin:0; text-wrap:balance}
+
+  .wrap{max-width:760px; margin:0 auto}
+
+  header.top{
+    padding-block:28px 18px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  header.top h1{font-size:clamp(24px,4vw,32px); font-weight:700; color:var(--ink)}
+  header.top p{margin:0; color:var(--muted); font-size:14.5px; line-height:1.6; max-width:56ch}
+
+  .steps{
+    display:flex; gap:8px; margin:18px 0 22px; flex-wrap:wrap;
+  }
+  .step-pill{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:999px; padding:7px 14px 7px 10px;
+    font-size:13px; color:var(--muted);
+    transition:background .2s,color .2s,border-color .2s;
+  }
+  .step-pill .n{
+    width:20px;height:20px;border-radius:50%;
+    background:var(--surface-2); color:var(--muted);
+    display:flex;align-items:center;justify-content:center;
+    font-size:11.5px; font-weight:700; flex:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .step-pill.active{border-color:var(--accent); color:var(--ink); background:var(--accent-soft)}
+  .step-pill.active .n{background:var(--accent); color:var(--accent-ink)}
+  .step-pill.done{color:var(--ink)}
+  .step-pill.done .n{background:var(--success); color:var(--accent-ink)}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:22px;
+    margin-bottom:18px;
+  }
+  .card h2{font-size:18px; font-weight:700; margin-bottom:4px}
+  .card .hint{color:var(--muted); font-size:13.5px; margin:2px 0 16px; line-height:1.6}
+
+  /* --- upload --- */
+  .dropzone{
+    border:1.5px dashed var(--border);
+    border-radius:12px;
+    background:var(--surface-2);
+    padding:26px 18px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    text-align:center; cursor:pointer;
+    transition:border-color .15s, background .15s;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--accent); background:var(--accent-soft)}
+  .dropzone svg{width:30px;height:30px; color:var(--accent)}
+  .dropzone .dz-title{font-weight:600; font-size:15px}
+  .dropzone .dz-sub{font-size:12.5px; color:var(--muted)}
+  input[type=file]{display:none}
+
+  .file-summary{
+    display:flex; align-items:center; gap:14px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:12px; padding:14px 16px;
+  }
+  .file-summary .doc-icon{
+    flex:none; width:38px;height:46px; border-radius:4px;
+    background:var(--surface); border:1px solid var(--border);
+    position:relative;
+  }
+  .file-summary .doc-icon::before{
+    content:"PDF"; position:absolute; inset:auto 0 6px 0; text-align:center;
+    font-size:8px; font-weight:700; letter-spacing:.03em; color:var(--stamp);
+  }
+  .file-summary .meta{flex:1; min-width:0}
+  .file-summary .name{font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .file-summary .sub{font-size:12.5px; color:var(--muted); margin-top:2px}
+  .file-summary button.linklike{
+    flex:none; border:none; background:none; color:var(--accent);
+    font-size:13px; font-weight:600; cursor:pointer; padding:6px;
+  }
+
+  .stamp-preview{
+    margin-top:14px; border:1px solid var(--border); border-radius:10px;
+    overflow:hidden; background:var(--surface-2);
+  }
+  .stamp-preview .page-mock{
+    aspect-ratio:1/1.35; max-width:180px; margin:14px auto 0;
+    background:var(--surface); border:1px solid var(--border); border-radius:4px;
+    display:flex; flex-direction:column; box-shadow:0 1px 4px rgba(0,0,0,.06);
+  }
+  .page-mock .lines{flex:1; padding:12px 10px; display:flex; flex-direction:column; gap:6px}
+  .page-mock .lines span{display:block; height:3px; border-radius:2px; background:var(--border)}
+  .page-mock .lines span:nth-child(3n){width:70%}
+  .page-mock .lines span:nth-child(3n+1){width:92%}
+  .page-mock .band{
+    border-top:1.5px dashed var(--stamp); background:var(--stamp-soft);
+    padding:6px 8px; font-size:8.5px; color:var(--stamp); font-weight:700;
+    text-align:center; letter-spacing:.02em;
+  }
+  .stamp-preview .caption{
+    text-align:center; font-size:12px; color:var(--muted); padding:10px 12px 14px;
+  }
+
+  /* --- signature --- */
+  .sig-box{
+    border:1.5px solid var(--border); border-radius:12px; background:var(--surface-2);
+    overflow:hidden;
+  }
+  canvas#sigpad{display:block; width:100%; height:170px; touch-action:none; cursor:crosshair; background:var(--surface)}
+  .sig-baseline{
+    position:relative; margin-top:-38px; pointer-events:none;
+    border-top:1px solid var(--muted); opacity:.35; margin-inline:24px;
+  }
+  .sig-row{display:flex; align-items:center; justify-content:space-between; margin-top:10px; gap:10px; flex-wrap:wrap}
+  .sig-row .date{font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .btn-ghost{
+    border:1px solid var(--border); background:var(--surface); color:var(--ink);
+    border-radius:8px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .btn-ghost:hover{border-color:var(--muted)}
+
+  textarea#notes{
+    width:100%; min-height:110px; resize:vertical;
+    border:1.5px solid var(--border); border-radius:12px; background:var(--surface-2);
+    padding:12px 14px; font-family:inherit; font-size:14.5px; color:var(--ink);
+    line-height:1.6;
+  }
+  textarea#notes:focus{outline:2px solid var(--accent); outline-offset:1px; background:var(--surface)}
+
+  .required-mark{color:var(--stamp); font-weight:700}
+
+  /* --- bottom action bar --- */
+  .actionbar{
+    position:fixed; inset-inline:0; bottom:0; z-index:20;
+    display:flex; justify-content:center;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+    background:linear-gradient(to top, var(--paper) 60%, transparent);
+  }
+  .actionbar-inner{
+    width:100%; max-width:760px;
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:12px 16px; display:flex; align-items:center; gap:14px; justify-content:space-between;
+  }
+  .actionbar .status{font-size:12.5px; color:var(--muted); flex:1; min-width:0; line-height:1.5}
+  .btn-primary{
+    flex:none; background:var(--accent); color:var(--accent-ink); border:none;
+    border-radius:10px; padding:12px 22px; font-size:15px; font-weight:700; cursor:pointer;
+    font-family:inherit;
+    box-shadow:0 2px 8px -2px color-mix(in srgb, var(--accent) 60%, transparent);
+    transition:transform .1s, opacity .15s;
+  }
+  .btn-primary:disabled{opacity:.45; cursor:not-allowed; box-shadow:none}
+  .btn-primary:not(:disabled):active{transform:scale(.97)}
+
+  /* --- result sheet --- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,18,15,.5); z-index:30;
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  }
+  @media (min-width:560px){ .overlay{align-items:center} }
+  .sheet{
+    width:100%; max-width:440px; background:var(--surface);
+    border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow);
+    padding:26px 24px 22px; text-align:center;
+  }
+  .sheet .check{
+    width:52px;height:52px; border-radius:50%; background:var(--success-soft); color:var(--success);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+  }
+  .sheet .check svg{width:26px;height:26px}
+  .sheet h3{font-size:19px; margin-bottom:6px}
+  .sheet p.desc{color:var(--muted); font-size:13.5px; line-height:1.6; margin:0 0 20px}
+  .sheet .choice{
+    display:flex; align-items:center; gap:12px; text-align:right;
+    border:1.5px solid var(--border); border-radius:12px; padding:13px 14px;
+    background:var(--surface-2); cursor:pointer; width:100%; margin-bottom:10px;
+    font-family:inherit;
+  }
+  .sheet .choice:hover{border-color:var(--accent)}
+  .sheet .choice .ic{
+    flex:none; width:34px;height:34px; border-radius:9px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sheet .choice .ic svg{width:17px;height:17px}
+  .sheet .choice .tx{flex:1}
+  .sheet .choice .tx .t1{font-size:14px; font-weight:700; color:var(--ink)}
+  .sheet .choice .tx .t2{font-size:12px; color:var(--muted); margin-top:1px}
+  .sheet .backbtn{
+    margin-top:8px; border:none; background:none; color:var(--muted);
+    font-size:13px; text-decoration:underline; cursor:pointer; font-family:inherit;
+  }
+  .sheet .err{color:var(--stamp); font-size:12.5px; margin-top:10px; min-height:1px}
+
+  [hidden]{display:none!important}
+  .visually-hidden{position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+
+  @media (max-width:480px){
+    .card{padding:16px}
+    .actionbar-inner{flex-direction:column; align-items:stretch}
+    .btn-primary{width:100%}
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>אישור הזמנה</h1>
+    <p>העלו את קובץ ה-PDF של טופס ההזמנה שהתקבל מהטופס המקוון, חתמו ורשמו הערות, ולסיום שלחו את הגרסה המאושרת.</p>
+  </header>
+
+  <div class="steps">
+    <div class="step-pill active" id="pill1"><span class="n">1</span>העלאת הטופס</div>
+    <div class="step-pill" id="pill2"><span class="n">2</span>חתימה והערות</div>
+    <div class="step-pill" id="pill3"><span class="n">3</span>שליחה</div>
+  </div>
+
+  <section class="card">
+    <h2>1. טופס ההזמנה</h2>
+    <p class="hint">קובץ PDF יחיד, כפי שהתקבל מהטופס המקוון.</p>
+
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="העלאת קובץ PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v11m0-11 4 4m-4-4-4 4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="dz-title">גררו לכאן קובץ PDF, או לחצו לבחירה</div>
+      <div class="dz-sub">עד קובץ אחד · PDF בלבד</div>
+    </div>
+    <input type="file" id="fileInput" accept="application/pdf">
+
+    <div id="fileLoaded" hidden>
+      <div class="file-summary">
+        <div class="doc-icon"></div>
+        <div class="meta">
+          <div class="name" id="fileName">—</div>
+          <div class="sub" id="fileMeta">—</div>
+        </div>
+        <button class="linklike" id="changeFileBtn" type="button">החלפה</button>
+      </div>
+
+      <div class="stamp-preview">
+        <div class="page-mock">
+          <div class="lines">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="band">אזור חתימת המנהל · עמוד אחרון</div>
+        </div>
+        <div class="caption">החתימה תוטבע בתחתית העמוד האחרון של הטופס, ועמוד הערות ייווסף בסופו</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. חתימה והערות</h2>
+    <p class="hint">חתימה בעכבר או באצבע <span class="required-mark">*</span> נדרשת. הערות הן רשות ויתווספו כעמוד נפרד.</p>
+
+    <div class="sig-box">
+      <canvas id="sigpad"></canvas>
+    </div>
+    <div class="sig-baseline"></div>
+    <div class="sig-row">
+      <button class="btn-ghost" id="clearSig" type="button">נקה חתימה</button>
+      <span class="date" id="todayLabel">—</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>הערות המנהל</h2>
+    <p class="hint">לדוגמה: אישור תנאי תשלום, בקשה להתאמת כמות, או הערה לצוות המכירות.</p>
+    <textarea id="notes" placeholder="כתבו כאן הערות שיתווספו כעמוד נוסף בסוף הקובץ..."></textarea>
+  </section>
+</div>
+
+<div class="actionbar">
+  <div class="actionbar-inner">
+    <div class="status" id="statusLine">יש להעלות טופס PDF ולחתום כדי להמשיך</div>
+    <button class="btn-primary" id="sendBtn" type="button" disabled>יצירה ושליחה</button>
+  </div>
+</div>
+
+<div class="overlay" id="resultOverlay" hidden>
+  <div class="sheet" id="resultSheet">
+    <!-- content injected by JS -->
+  </div>
+</div>
+
+<div class="visually-hidden" aria-live="polite" id="ariaStatus"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var HEBREW_RANGE = /[֐-׿]/;
+
+  function shapeRtlLine(line){
+    var tokens = line.match(/[֐-׿]+|[^֐-׿]+/g) || [];
+    tokens.reverse();
+    for (var i=0;i<tokens.length;i++){
+      if (HEBREW_RANGE.test(tokens[i])) tokens[i] = tokens[i].split("").reverse().join("");
+    }
+    return tokens.join("");
+  }
+
+  function base64ToBytes(b64){
+    var bin = atob(b64);
+    var len = bin.length;
+    var bytes = new Uint8Array(len);
+    for (var i=0;i<len;i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  function fmtBytes(n){
+    if (n < 1024) return n + " B";
+    if (n < 1024*1024) return (n/1024).toFixed(0) + " KB";
+    return (n/(1024*1024)).toFixed(1) + " MB";
+  }
+
+  // ---------- state ----------
+  var state = {
+    pdfBytes: null,
+    fileName: "",
+    sigDataUrl: null,
+    hasSig: false
+  };
+
+  var todayLabel = document.getElementById("todayLabel");
+  var todayStr = new Date().toLocaleDateString("he-IL", { year:"numeric", month:"long", day:"numeric" });
+  todayLabel.textContent = "תאריך: " + todayStr;
+
+  // ---------- upload ----------
+  var dropzone = document.getElementById("dropzone");
+  var fileInput = document.getElementById("fileInput");
+  var fileLoaded = document.getElementById("fileLoaded");
+  var fileNameEl = document.getElementById("fileName");
+  var fileMetaEl = document.getElementById("fileMeta");
+  var pill1 = document.getElementById("pill1");
+  var pill2 = document.getElementById("pill2");
+  var pill3 = document.getElementById("pill3");
+
+  function openPicker(){ fileInput.click(); }
+  dropzone.addEventListener("click", openPicker);
+  dropzone.addEventListener("keydown", function(e){ if (e.key==="Enter"||e.key===" ") { e.preventDefault(); openPicker(); } });
+  ["dragover","dragenter"].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ e.preventDefault(); dropzone.classList.add("drag"); });
+  });
+  ["dragleave","drop"].forEach(function(ev){
+    dropzone.addEventListener(ev, function(e){ dropzone.classList.remove("drag"); });
+  });
+  dropzone.addEventListener("drop", function(e){
+    e.preventDefault();
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  fileInput.addEventListener("change", function(){
+    if (fileInput.files && fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+  document.getElementById("changeFileBtn").addEventListener("click", function(e){
+    e.stopPropagation();
+    fileInput.value = "";
+    openPicker();
+  });
+
+  function handleFile(file){
+    if (file.type && file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)){
+      setStatus("הקובץ שנבחר אינו PDF");
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var bytes = new Uint8Array(reader.result);
+      PDFLib.PDFDocument.load(bytes, { ignoreEncryption:true }).then(function(doc){
+        state.pdfBytes = bytes;
+        state.fileName = file.name;
+        var pages = doc.getPageCount();
+        fileNameEl.textContent = file.name;
+        fileMetaEl.textContent = fmtBytes(file.size) + " · " + pages + (pages===1 ? " עמוד" : " עמודים");
+        fileLoaded.hidden = false;
+        dropzone.hidden = true;
+        pill1.classList.remove("active");
+        pill1.classList.add("done");
+        pill2.classList.add("active");
+        updateSendState();
+      }).catch(function(err){
+        console.error(err);
+        setStatus("לא ניתן לקרוא את הקובץ. ודאו שזהו PDF תקין.");
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- signature pad ----------
+  var canvas = document.getElementById("sigpad");
+  var ctx = canvas.getContext("2d");
+  var drawing = false, lastX=0, lastY=0, strokeCount=0;
+
+  function resizeCanvas(){
+    var rect = canvas.getBoundingClientRect();
+    var ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, rect.width * ratio);
+    canvas.height = Math.max(1, rect.height * ratio);
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    styleCtx();
+  }
+  function styleCtx(){
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    var isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches &&
+                 document.documentElement.getAttribute("data-theme") !== "light";
+    if (document.documentElement.getAttribute("data-theme") === "dark") isDark = true;
+    if (document.documentElement.getAttribute("data-theme") === "light") isDark = false;
+    ctx.strokeStyle = isDark ? "#f2eee3" : "#1c1a16";
+  }
+  window.addEventListener("resize", function(){
+    var hadSig = strokeCount > 0;
+    resizeCanvas();
+    if (hadSig){
+      strokeCount = 0;
+      state.hasSig = false;
+      updateSendState();
+      setStatus("שינוי גודל המסך אִפֵּס את החתימה — יש לחתום מחדש");
+    }
+  });
+  resizeCanvas();
+
+  function pos(e){
+    var rect = canvas.getBoundingClientRect();
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return [cx, cy];
+  }
+  function start(e){
+    e.preventDefault();
+    drawing = true;
+    var p = pos(e); lastX=p[0]; lastY=p[1];
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(lastX+0.01,lastY+0.01); ctx.stroke();
+  }
+  function move(e){
+    if (!drawing) return;
+    e.preventDefault();
+    var p = pos(e);
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p[0],p[1]); ctx.stroke();
+    lastX=p[0]; lastY=p[1];
+    strokeCount++;
+    state.hasSig = true;
+    updateSendState();
+  }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener("pointerdown", start);
+  canvas.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", end);
+  canvas.addEventListener("touchstart", start, {passive:false});
+  canvas.addEventListener("touchmove", move, {passive:false});
+  canvas.addEventListener("touchend", end);
+
+  document.getElementById("clearSig").addEventListener("click", function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    strokeCount = 0;
+    state.hasSig = false;
+    updateSendState();
+  });
+
+  // ---------- status / step tracking ----------
+  var statusLine = document.getElementById("statusLine");
+  var sendBtn = document.getElementById("sendBtn");
+  var ariaStatus = document.getElementById("ariaStatus");
+
+  function setStatus(msg){
+    statusLine.textContent = msg;
+    ariaStatus.textContent = msg;
+  }
+
+  function updateSendState(){
+    var ready = !!state.pdfBytes && state.hasSig;
+    sendBtn.disabled = !ready;
+    if (!state.pdfBytes) setStatus("יש להעלות טופס PDF ולחתום כדי להמשיך");
+    else if (!state.hasSig) setStatus("נותר לחתום באזור החתימה כדי להמשיך");
+    else {
+      setStatus("מוכן ליצירה ושליחה");
+      pill2.classList.remove("active");
+      pill2.classList.add("done");
+      pill3.classList.add("active");
+    }
+  }
+
+  // ---------- fonts (embedded for Hebrew PDF text) ----------
+  var FONT_REGULAR_URL = "NotoSansHebrew-Regular.ttf";
+  var FONT_BOLD_URL = "NotoSansHebrew-Bold.ttf";
+
+  function loadFont(url){
+    return fetch(url).then(function(r){ return r.arrayBuffer(); });
+  }
+
+  // ---------- build & send ----------
+  sendBtn.addEventListener("click", function(){
+    if (sendBtn.disabled) return;
+    sendBtn.disabled = true;
+    var prevLabel = sendBtn.textContent;
+    sendBtn.textContent = "יוצר קובץ…";
+
+    var sigDataUrl = canvas.toDataURL("image/png");
+
+    Promise.all([
+      PDFLib.PDFDocument.load(state.pdfBytes, { ignoreEncryption:true }),
+      loadFont(FONT_REGULAR_URL),
+      loadFont(FONT_BOLD_URL)
+    ]).then(function(results){
+      var pdfDoc = results[0], regularBytes = results[1], boldBytes = results[2];
+      pdfDoc.registerFontkit(window.fontkit);
+      return Promise.all([
+        pdfDoc.embedFont(regularBytes, { subset:true }),
+        pdfDoc.embedFont(boldBytes, { subset:true }),
+        pdfDoc.embedPng(base64ToBytes(sigDataUrl.split(",")[1]))
+      ]).then(function(embeds){
+        return { pdfDoc: pdfDoc, regular: embeds[0], bold: embeds[1], sigImg: embeds[2] };
+      });
+    }).then(function(ctxObj){
+      return renderApproval(ctxObj);
+    }).then(function(pdfDoc){
+      return pdfDoc.save();
+    }).then(function(outBytes){
+      state.outBytes = outBytes;
+      showResultSheet();
+    }).catch(function(err){
+      console.error(err);
+      setStatus("אירעה שגיאה ביצירת הקובץ. אפשר לנסות שוב.");
+    }).finally(function(){
+      sendBtn.disabled = false;
+      sendBtn.textContent = prevLabel;
+    });
+  });
+
+  function wrapLines(text, font, size, maxWidth){
+    var paragraphs = text.split(/\r?\n/);
+    var lines = [];
+    paragraphs.forEach(function(para){
+      if (para.trim()===""){ lines.push(""); return; }
+      var words = para.split(/\s+/).filter(Boolean);
+      var current = "";
+      words.forEach(function(word){
+        var candidate = current ? current + " " + word : word;
+        var w = font.widthOfTextAtSize(candidate, size);
+        if (w > maxWidth && current){
+          lines.push(current);
+          current = word;
+        } else {
+          current = candidate;
+        }
+      });
+      if (current) lines.push(current);
+    });
+    return lines;
+  }
+
+  function renderApproval(ctxObj){
+    var pdfDoc = ctxObj.pdfDoc, regular = ctxObj.regular, bold = ctxObj.bold, sigImg = ctxObj.sigImg;
+    var pages = pdfDoc.getPages();
+    var lastPage = pages[pages.length - 1];
+    var pw = lastPage.getWidth(), ph = lastPage.getHeight();
+
+    var margin = 36;
+    var bandHeight = 92;
+
+    // approval band background + top rule
+    lastPage.drawRectangle({
+      x:0, y:0, width:pw, height:bandHeight,
+      color: PDFLib.rgb(0.988,0.925,0.905), opacity:0.55
+    });
+    lastPage.drawLine({
+      start:{x:margin, y:bandHeight}, end:{x:pw-margin, y:bandHeight},
+      thickness:0.75, color: PDFLib.rgb(0.61,0.23,0.18), opacity:0.6
+    });
+
+    var labelSize = 9;
+    var label1 = shapeRtlLine("אישור מנהל");
+    var label1Width = bold.widthOfTextAtSize(label1, labelSize);
+    lastPage.drawText(label1, {
+      x: pw - margin - label1Width, y: bandHeight - 16,
+      size: labelSize, font: bold, color: PDFLib.rgb(0.42,0.18,0.14)
+    });
+
+    var dateLine = shapeRtlLine("תאריך: " + todayStr);
+    var dateSize = 8.5;
+    var dateWidth = regular.widthOfTextAtSize(dateLine, dateSize);
+    lastPage.drawText(dateLine, {
+      x: pw - margin - dateWidth, y: bandHeight - 30,
+      size: dateSize, font: regular, color: PDFLib.rgb(0.36,0.34,0.3)
+    });
+
+    // signature image, scaled to fit within the band, right-aligned under the labels
+    var maxSigW = pw - margin*2;
+    var scale = Math.min(1, Math.min(maxSigW*0.55/sigImg.width, 46/sigImg.height));
+    var sw = sigImg.width*scale, sh = sigImg.height*scale;
+    lastPage.drawImage(sigImg, {
+      x: Math.max(margin, pw - margin - sw), y: 12, width: sw, height: sh
+    });
+
+    // ---- comments page ----
+    var notes = document.getElementById("notes").value.trim();
+    var notesPage = pdfDoc.addPage([pw, ph]);
+    var topY = ph - 64;
+
+    var h1 = shapeRtlLine("הערות המנהל");
+    var h1Size = 17;
+    var h1Width = bold.widthOfTextAtSize(h1, h1Size);
+    notesPage.drawText(h1, { x: pw - margin - h1Width, y: topY, size:h1Size, font:bold, color: PDFLib.rgb(0.1,0.29,0.32) });
+
+    var sub = shapeRtlLine("בהמשך לאישור ההזמנה · " + todayStr);
+    var subSize = 9.5;
+    var subWidth = regular.widthOfTextAtSize(sub, subSize);
+    notesPage.drawText(sub, { x: pw - margin - subWidth, y: topY - 20, size:subSize, font:regular, color: PDFLib.rgb(0.48,0.44,0.38) });
+
+    notesPage.drawLine({
+      start:{x:margin, y: topY - 32}, end:{x:pw-margin, y: topY - 32},
+      thickness:0.75, color: PDFLib.rgb(0.72,0.65,0.55)
+    });
+
+    var bodySize = 11.5;
+    var lineHeight = 17;
+    var maxWidth = pw - margin*2;
+    var bodyText = notes || "לא צורפו הערות לאישור זה.";
+    var lines = wrapLines(bodyText, regular, bodySize, maxWidth);
+    var y = topY - 58;
+    lines.forEach(function(line){
+      if (y < margin + 20){
+        notesPage = pdfDoc.addPage([pw, ph]);
+        y = ph - 64;
+      }
+      if (line){
+        var shaped = shapeRtlLine(line);
+        var lw = regular.widthOfTextAtSize(shaped, bodySize);
+        notesPage.drawText(shaped, { x: pw - margin - lw, y:y, size:bodySize, font:regular, color: PDFLib.rgb(0.13,0.12,0.1) });
+      }
+      y -= lineHeight;
+    });
+
+    return pdfDoc;
+  }
+
+  // ---------- result sheet & sending ----------
+  var overlay = document.getElementById("resultOverlay");
+  var sheet = document.getElementById("resultSheet");
+  overlay.addEventListener("click", function(e){
+    if (e.target === overlay) overlay.hidden = true;
+  });
+
+  function outFileName(){
+    var base = (state.fileName || "טופס-הזמנה").replace(/\.pdf$/i, "");
+    return "אישור-מנהל-" + base + ".pdf";
+  }
+
+  function showResultSheet(){
+    sheet.innerHTML =
+      '<div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+      '<h3>האישור מוכן</h3>' +
+      '<p class="desc">הקובץ כולל את הטופס המקורי עם חתימת המנהל בעמוד האחרון, ועמוד הערות בסופו. איך לשלוח אותו?</p>' +
+      '<button class="choice" id="choiceSave" type="button">' +
+        '<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 4v11m0-11 4 4m-4-4-4 4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+        '<span class="tx"><span class="t1">שמירה / שיתוף הקובץ</span><span class="t2">שמירה למכשיר, או שיתוף ישיר דרך תפריט השיתוף</span></span>' +
+      '</button>' +
+      '<button class="choice" id="choiceMail" type="button">' +
+        '<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+        '<span class="tx"><span class="t1">פתיחת הודעת מייל</span><span class="t2">הקובץ יישמר, ותיפתח הודעה חדשה לצירופו</span></span>' +
+      '</button>' +
+      '<div class="err" id="sheetErr"></div>' +
+      '<button class="backbtn" id="backBtn" type="button">חזרה לטופס</button>';
+
+    overlay.hidden = false;
+
+    document.getElementById("backBtn").addEventListener("click", function(){
+      overlay.hidden = true;
+    });
+    document.getElementById("choiceSave").addEventListener("click", function(){
+      saveFile().catch(function(e){ showSheetErr(e); });
+    });
+    document.getElementById("choiceMail").addEventListener("click", function(){
+      saveFile().then(function(){
+        var subject = encodeURIComponent("אישור הזמנה חתום");
+        var body = encodeURIComponent("מצורף טופס ההזמנה המאושר.\nיש לצרף להודעה זו את הקובץ שנשמר כעת: " + outFileName());
+        window.open("mailto:?subject=" + subject + "&body=" + body, "_blank");
+      }).catch(function(e){ showSheetErr(e); });
+    });
+  }
+
+  function showSheetErr(e){
+    var code = e && e.code;
+    var el = document.getElementById("sheetErr");
+    if (!el) return;
+    if (code === "declined") { el.textContent = ""; return; }
+    if (code === "unavailable" || code === "not_granted"){
+      el.textContent = "שמירת קבצים אינה נתמכת בתצוגה הזו.";
+      return;
+    }
+    el.textContent = "לא ניתן היה לשמור את הקובץ. אפשר לנסות שוב.";
+  }
+
+  function saveFile(){
+    // Inside a published Claude artifact, offer the file through the platform's
+    // save/share sheet. Outside that sandbox (e.g. this page hosted on GitHub
+    // Pages or opened locally), fall back to a plain browser download.
+    if (window.claude && window.claude.use){
+      return window.claude.use("downloads").then(function(downloads){
+        if (!downloads) return browserDownload();
+        return downloads.save({ filename: outFileName(), data: new Blob([state.outBytes], { type:"application/pdf" }) });
+      });
+    }
+    return browserDownload();
+  }
+
+  function browserDownload(){
+    return new Promise(function(resolve){
+      var blob = new Blob([state.outBytes], { type:"application/pdf" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = outFileName();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      resolve({ status:"saved" });
+    });
+  }
+
+})();
+</script>
