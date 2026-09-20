@@ -1,4 +1,12 @@
 <title>אישור הזמנה</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a4a52">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="אישור הזמנה">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700&family=Noto+Sans+Hebrew:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -762,6 +770,15 @@
       return;
     }
     el.textContent = "לא ניתן היה לשמור את הקובץ. אפשר לנסות שוב.";
+  }
+
+  // Register the service worker so the page is installable (Add to Home
+  // screen / desktop install). Harmless no-op inside the Claude artifact
+  // sandbox, where this typically isn't available.
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){ /* not installable here — fine */ });
+    });
   }
 
   function saveFile(){
