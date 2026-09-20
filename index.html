@@ -793,21 +793,48 @@
 
   // Android: the manifest's share_target makes the app appear in the
   // system share sheet for a PDF. The service worker stashes the shared
-  // file in the Cache Storage API and redirects here with ?shared=1.
-  if (location.search.indexOf("shared=1") !== -1 && "caches" in window){
-    caches.open("shared-file-v1").then(function(cache){
-      return cache.match("./shared-pdf").then(function(res){
-        if (!res) return;
-        return res.blob().then(function(blob){
-          var nameHeader = res.headers.get("X-Filename");
-          var filename = nameHeader ? decodeURIComponent(nameHeader) : "shared.pdf";
-          handleFile(new File([blob], filename, { type: blob.type || "application/pdf" }));
-          return cache.delete("./shared-pdf");
-        });
-      });
-    }).catch(function(){ /* ignore */ }).finally(function(){
-      history.replaceState(null, "", location.pathname);
+  // file in IndexedDB and redirects here with ?shared=1; we pick it up
+  // and feed it straight into the normal upload path.
+  function openShareDB(){
+    return new Promise(function(resolve, reject){
+      var req = indexedDB.open("aishur-hazmana-share", 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore("files"); };
+      req.onsuccess = function(){ resolve(req.result); };
+      req.onerror = function(){ reject(req.error); };
     });
+  }
+  function takeSharedFile(){
+    return openShareDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction("files", "readwrite");
+        var store = tx.objectStore("files");
+        var getReq = store.get("pending-pdf");
+        getReq.onsuccess = function(){
+          var rec = getReq.result;
+          store.delete("pending-pdf");
+          resolve(rec || null);
+        };
+        getReq.onerror = function(){ reject(getReq.error); };
+      });
+    });
+  }
+
+  if (location.search.indexOf("shared=1") !== -1){
+    if ("indexedDB" in window){
+      takeSharedFile().then(function(rec){
+        if (rec && rec.blob){
+          handleFile(new File([rec.blob], rec.filename || "shared.pdf", { type: rec.type || "application/pdf" }));
+        } else {
+          setStatus("לא התקבל קובץ מהשיתוף. פתחו את האפליקציה ישירות פעם אחת ואז נסו לשתף שוב.");
+        }
+      }).catch(function(){
+        setStatus("אירעה שגיאה בקבלת הקובץ מהשיתוף. נסו לשתף שוב.");
+      }).finally(function(){
+        history.replaceState(null, "", location.pathname);
+      });
+    } else {
+      history.replaceState(null, "", location.pathname);
+    }
   }
 
   function saveFile(){
