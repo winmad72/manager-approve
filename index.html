@@ -863,12 +863,30 @@
       });
     });
   }
+  function takeShareDebug(){
+    return openShareDB().then(function(db){
+      return new Promise(function(resolve){
+        var tx = db.transaction("files", "readwrite");
+        var store = tx.objectStore("files");
+        var getReq = store.get("share-debug");
+        getReq.onsuccess = function(){
+          store.delete("share-debug");
+          resolve(getReq.result || null);
+        };
+        getReq.onerror = function(){ resolve(null); };
+      });
+    }).catch(function(){ return null; });
+  }
 
   dbgAppend("search: " + (location.search || "(empty — share_target navigation likely never reached this page with ?shared=1)"));
 
   if (location.search.indexOf("shared=1") !== -1){
     dbgAppend("shared=1 detected, checking IndexedDB...");
     if ("indexedDB" in window){
+      takeShareDebug().then(function(dbg2){
+        if (dbg2) dbgAppend("SW share debug: " + JSON.stringify(dbg2));
+        else dbgAppend("SW share debug: (no record — the fetch handler for /share-target may not have run at all)");
+      });
       takeSharedFile().then(function(rec){
         dbgAppend("takeSharedFile resolved: " + (rec ? ("found, filename=" + rec.filename + ", size=" + (rec.blob && rec.blob.size)) : "no record found"));
         if (rec && rec.blob){

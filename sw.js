@@ -54,6 +54,19 @@ function saveSharedFile(file){
     });
   });
 }
+// Always records what actually happened while handling the share POST
+// (even on failure), so the app can show it in its debug panel — we have
+// no devtools access on the phone that's actually failing.
+function saveShareDebug(info){
+  return openShareDB().then(function(db){
+    return new Promise(function(resolve){
+      var tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").put(info, "share-debug");
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ resolve(); };
+    });
+  }).catch(function(){});
+}
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
@@ -61,11 +74,26 @@ self.addEventListener("fetch", (event) => {
 
   if (req.method === "POST" && url.pathname.endsWith("/share-target")) {
     event.respondWith((async () => {
+      var debug = { at: new Date().toISOString(), contentType: req.headers.get("Content-Type") || "(none)" };
       try {
         const formData = await req.formData();
+        var keys = [];
+        for (const pair of formData.entries()) {
+          var val = pair[1];
+          keys.push(pair[0] + "=" + (val instanceof File ? ("File(name=" + val.name + ", type=" + val.type + ", size=" + val.size + ")") : String(val).slice(0, 60)));
+        }
+        debug.formDataEntries = keys;
         const file = formData.get("pdf");
-        if (file) await saveSharedFile(file);
-      } catch (e) { /* fall through to redirect regardless */ }
+        if (file) {
+          await saveSharedFile(file);
+          debug.result = "saved pending-pdf ok";
+        } else {
+          debug.result = "no 'pdf' field in formData";
+        }
+      } catch (e) {
+        debug.result = "error: " + (e && e.message ? e.message : String(e));
+      }
+      await saveShareDebug(debug);
       return Response.redirect("./index.html?shared=1", 303);
     })());
     return;
