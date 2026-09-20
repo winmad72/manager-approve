@@ -74,7 +74,20 @@ self.addEventListener("fetch", (event) => {
 
   if (req.method === "POST" && url.pathname.endsWith("/share-target")) {
     event.respondWith((async () => {
-      var debug = { at: new Date().toISOString(), contentType: req.headers.get("Content-Type") || "(none)" };
+      var debug = {
+        at: new Date().toISOString(),
+        contentType: req.headers.get("Content-Type") || "(none)",
+        contentLength: req.headers.get("Content-Length") || "(none)"
+      };
+      try {
+        // Read the raw bytes first (via a clone) so we can tell whether the
+        // POST body itself is empty at the network level, versus formData()
+        // failing to parse a non-empty body.
+        const rawBuf = await req.clone().arrayBuffer();
+        debug.rawByteLength = rawBuf.byteLength;
+      } catch (e) {
+        debug.rawByteLength = "error: " + (e && e.message ? e.message : String(e));
+      }
       try {
         const formData = await req.formData();
         var keys = [];

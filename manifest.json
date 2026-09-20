@@ -21,7 +21,7 @@
     "enctype": "multipart/form-data",
     "params": {
       "files": [
-        { "name": "pdf", "accept": ["application/pdf", ".pdf"] }
+        { "name": "pdf", "accept": ["application/pdf", ".pdf", "application/octet-stream", "*/*"] }
       ]
     }
   },
